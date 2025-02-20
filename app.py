@@ -43,7 +43,7 @@ class Cursor:
     
     def on_mouse_click(self, event):
         x, y  = event.xdata, event.ydata
-        self.roi_center = [x, y]
+        self.roi_center = [int(x), int(y)]
 
 class PupilTracker:
     def __init__(self, osc_ip, osc_port):
@@ -77,27 +77,33 @@ class PupilTracker:
         self.graph.figure.canvas.mpl_connect('motion_notify_event', self.cursor.on_mouse_move)
         self.graph.figure.canvas.mpl_connect('button_press_event', self.cursor.on_mouse_click)
         plt.title(f"Confidence: {title}")
-        plt.pause(0.25)
+        plt.show()
+        # plt.pause(0.005)
 
     def update_graph(self, cv2Image, title):
         self.graph.remove()
         self.graph = plt.imshow(cv2Image)
         plt.title(f"Confidence: {title}")
-        plt.pause(0.25)
+        plt.draw()
+        plt.pause(0.005)
 
     def draw_pupil_and_show(self, cv2Image, pupil):
-        x, y = pupil.center
-        x = int(x)
-        y  = int(y)
-        dMaj = int(pupil.majorAxis())
-        dMin = int(pupil.minorAxis())
-        angle = pupil.angle
+        if pupil==None:
+            x, y, dMaj, dMin, angle, confidence = 10, 10, 50, 20, 80, 0.5
+        else:
+            x, y = pupil.center
+            x = int(x)
+            y  = int(y)
+            dMaj = int(pupil.majorAxis())
+            dMin = int(pupil.minorAxis())
+            angle = pupil.angle
+            confidence = pupil.confidence
         colourImg = cv2.cvtColor(cv2Image, cv2.COLOR_GRAY2RGB)
         cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, (0, 0, 255), 1)
         if self.graph == None:
-            self.init_graph(colourImg, pupil.confidence)
+            self.init_graph(colourImg, confidence)
         else:
-            self.update_graph(colourImg, pupil.confidence)
+            self.update_graph(colourImg, confidence)
     
     def collect_image(self):
         if self.debug:
@@ -110,18 +116,20 @@ class PupilTracker:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         x, y, w, h = self.ROI
         return img[x:x+w, y:y+h]
-        
-    def track_pupil(self, cv2Image):
-        #use model
-        pupil = self.model.run(cv2Image)
-
+    
+    def normalise_pupil(self, pupil):
         x, y = pupil.center
         d = pupil.majorAxis()
         x = int(x)
         y = int(y)
         d = int(d)
-        #Normalise
+        #todo Normalise
         return x, y, d
+        
+    def track_pupil(self, cv2Image):
+        #use model
+        pupil = self.model.run(cv2Image)
+
         #detect outliers
         pass
         return None
@@ -133,18 +141,16 @@ class PupilTracker:
             img = self.collect_image()
             t1 = time.time()
             print(f"image collected in {t1  - t0} seconds")
-            plt.imshow(img)
-            plt.show()
             pupil = self.track_pupil(img)
             t2 = time.time()
             print(f"pupil identified in {t2 - t1} seconds")
+            if pupil == None:
+                print("Pupil invalid.")
+                continue
             if self.debug or first_run:
                 self.draw_pupil_and_show(img, pupil)
                 t3  = time.time()
                 print(f"pupil drawn in {t3 - t2} seconds")
-            if pupil == None:
-                print("Pupil invalid.")
-                continue
             #set ROI
             if self.cursor.roi_center != None and self.roi_center != self.cursor.roi_center:
                 global roi_size
@@ -153,11 +159,14 @@ class PupilTracker:
                 y = self.cursor.roi_center[1] - h//2
                 self.roi_center = self.cursor.roi_center
                 self.ROI = [x, y, w, h]
-            #send off
-            self.send_pupil(pupil)
+            x, y, d = self.normalise_pupil(pupil)
             t4 = time.time()
-            print(f"pupil sent in {t3 - t4} seconds")
-            print(f"TOTAL TIME: {t4 - t0} seconds")
+            print(f"pupil normalised in {t3 - t4} seconds")
+            #send off
+            self.send_pupil(x, y, d)
+            t5 = time.time()
+            print(f"pupil sent in {t4 - t5} seconds")
+            print(f"TOTAL TIME: {t5 - t0} seconds")
         self.cam.release()
     
     def run(self):
@@ -165,11 +174,11 @@ class PupilTracker:
         while(True):
             img = self.collect_image()
             pupil = self.track_pupil(img)
-            if self.debug or first_run:
-                self.draw_pupil_and_show(img, pupil)
             if pupil == None:
                 print("Pupil invalid.")
                 continue
+            if self.debug or first_run:
+                self.draw_pupil_and_show(img, pupil)
             #set ROI
             if self.cursor.roi_center != None and self.roi_center != self.cursor.roi_center:
                 global roi_size
@@ -178,7 +187,9 @@ class PupilTracker:
                 y = self.cursor.roi_center[1] - h//2
                 self.roi_center = self.cursor.roi_center
                 self.ROI = [x, y, w, h]
-            self.send_pupil(pupil.x)
+            x, y, d = self.normalise_pupil(pupil)
+            #send off
+            self.send_pupil(x, y, d)
 
 if __name__ == "__main__":
     tracker = PupilTracker(osc_ip, osc_port)
