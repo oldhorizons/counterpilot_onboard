@@ -1,4 +1,4 @@
-# import picamzero as picam
+import picamzero as picam
 import numpy as np
 import cv2
 import pypupilext as pp
@@ -53,8 +53,8 @@ class PupilTracker:
         if self.debug:
             self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe, pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
         #TODO CHANGE FOR PI
-        self.cam = cv2.VideoCapture(0)
-        # self.cam = picam.Camera()
+        # self.cam = cv2.VideoCapture(0)
+        self.cam = picam.Camera()
         self.ROI = [0, 0, -1, -1] #x, y, w, h
         self.roi_center = None
         self.pupilID = 1
@@ -106,13 +106,13 @@ class PupilTracker:
             self.update_graph(colourImg, confidence)
     
     def collect_image(self):
-        if self.debug:
-            if self.cam.isOpened():
-                rval, img = self.cam.read()
-            else:
-                print("something went wrong with the image")
-        else:
-            img = self.cam.capture()
+        #if self.debug:
+        #    if self.cam.isOpened():
+        #        rval, img = self.cam.read()
+        #    else:
+        #        print("something went wrong with the image")
+        #else:
+        img = self.cam.capture()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         x, y, w, h = self.ROI
         return img[x:x+w, y:y+h]
