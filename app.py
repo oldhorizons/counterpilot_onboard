@@ -14,7 +14,7 @@ class PupilTracker:
         self.debug = debug
         self.model = pp.PuReST()
         if self.debug:
-            self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe, pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
+            self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
         self.cam = picam.Camera()
         self.cam.flip_camera(vflip=True)
         self.eye_finder = cv2.CascadeClassifier('data/haarcascades/haarcascade_eye.xml')
@@ -70,11 +70,34 @@ class PupilTracker:
             angle = pupil.angle
             confidence = pupil.confidence
         colourImg = cv2.cvtColor(cv2Image, cv2.COLOR_GRAY2RGB)
-        cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, (0, 0, 255), 1)
+        cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, (255, 0, 255), 2)
         if self.graph == None:
             self.init_graph(colourImg, confidence)
         else:
             self.update_graph(colourImg, confidence)
+        
+    def draw_all_pupils_and_show(self, cv2Image, pupils):
+        colourImg = cv2.cvtColor(cv2Image, cv2.COLOR_GRAY2RGB)
+        colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+        confidences = []
+        # pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()
+        # ElSe:red, ExCuSe:green, PuRe:blue, PuReST:yellow, Starburst:magenta, Swirski2D:cyan
+        for i, pupil in enumerate(pupils):
+            if pupil==None:
+                confidences.append(0)
+                continue
+            x, y = pupil.center
+            x = int(x)
+            y  = int(y)
+            dMaj = int(pupil.majorAxis())
+            dMin = int(pupil.minorAxis())
+            angle = pupil.angle
+            confidences.append(str(int(100*pupil.confidence)))
+            cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
+        if self.graph == None:
+            self.init_graph(colourImg, ','.join(confidences))
+        else:
+            self.update_graph(colourImg, ','.join(confidences))
     
     def collect_image(self):
         img = self.cam.capture_array()
@@ -101,6 +124,17 @@ class PupilTracker:
         pass
         return None
     
+    def track_pupil_agreement(self, cv2Image):
+        pupils = []
+        #pink is rubbish lmao. cut pink
+        # if center isn't within a tolerance of median center, discard
+        # if radius too small or too large, discard
+        # largest axis of smallest ellipse within these tolerance
+        # plus some running average to smooth outliers?
+        #also TODO crashes if it hasn't seen a pupil in a while
+        for model in self.models:
+            
+    
     def run_verbose(self):
         first_run = True
         while(True):
@@ -108,6 +142,9 @@ class PupilTracker:
             img = self.collect_image()
             t1 = time.time()
             print(f"image collected in {t1  - t0} seconds")
+            pupils = []
+            for model in self.models:
+                pupils.append(model.run(img))
             pupil = self.track_pupil(img)
             t2 = time.time()
             print(f"pupil identified in {t2 - t1} seconds")
@@ -115,7 +152,8 @@ class PupilTracker:
                 print("Pupil invalid.")
                 continue
             if self.debug or first_run:
-                self.draw_pupil_and_show(img, pupil)
+                self.draw_all_pupils_and_show(img, pupils)
+                #self.draw_pupil_and_show(img, pupil)
                 t3  = time.time()
                 print(f"pupil drawn in {t3 - t2} seconds")
             #basic set ROI
