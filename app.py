@@ -112,7 +112,7 @@ class PupilTracker:
         #    else:
         #        print("something went wrong with the image")
         #else:
-        img = self.cam.capture()
+        img = self.cam.capture_array()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         x, y, w, h = self.ROI
         return img[x:x+w, y:y+h]
@@ -144,9 +144,9 @@ class PupilTracker:
             pupil = self.track_pupil(img)
             t2 = time.time()
             print(f"pupil identified in {t2 - t1} seconds")
-            if pupil == None:
-                print("Pupil invalid.")
-                continue
+            #if pupil == None
+            #    print("Pupil invalid.")
+            #    continue
             if self.debug or first_run:
                 self.draw_pupil_and_show(img, pupil)
                 t3  = time.time()
@@ -159,7 +159,8 @@ class PupilTracker:
                 y = self.cursor.roi_center[1] - h//2
                 self.roi_center = self.cursor.roi_center
                 self.ROI = [x, y, w, h]
-            x, y, d = self.normalise_pupil(pupil)
+            #TODO RE-ADD THIS
+            # x, y, d = self.normalise_pupil(pupil)
             t4 = time.time()
             print(f"pupil normalised in {t3 - t4} seconds")
             #send off
