@@ -8,43 +8,6 @@ from pythonosc import udp_client
 from constants import osc_ip, osc_port, debug, roi_size
 import time
 
-class Cursor:
-    """
-    A cross hair cursor. from https://matplotlib.org/stable/gallery/event_handling/cursor_demo.html#sphx-glr-gallery-event-handling-cursor-demo-py
-    """
-    def __init__(self, ax):
-        self.ax = ax
-        self.horizontal_line = ax.axhline(color='k', lw=0.8, ls='--')
-        self.vertical_line = ax.axvline(color='k', lw=0.8, ls='--')
-        # text location in axes coordinates
-        self.text = ax.text(0.72, 0.9, '', transform=ax.transAxes)
-        self.roi_center = None
-
-    def set_cross_hair_visible(self, visible):
-        need_redraw = self.horizontal_line.get_visible() != visible
-        self.horizontal_line.set_visible(visible)
-        self.vertical_line.set_visible(visible)
-        self.text.set_visible(visible)
-        return need_redraw
-
-    def on_mouse_move(self, event):
-        if not event.inaxes:
-            need_redraw = self.set_cross_hair_visible(False)
-            if need_redraw:
-                self.ax.figure.canvas.draw()
-        else:
-            self.set_cross_hair_visible(True)
-            x, y = event.xdata, event.ydata
-            # update the line positions
-            self.horizontal_line.set_ydata([y])
-            self.vertical_line.set_xdata([x])
-            self.text.set_text(f'x={x:1.2f}, y={y:1.2f}')
-            self.ax.figure.canvas.draw()
-    
-    def on_mouse_click(self, event):
-        x, y  = event.xdata, event.ydata
-        self.roi_center = [int(x), int(y)]
-
 class PupilTracker:
     def __init__(self, osc_ip, osc_port):
         global debug
@@ -52,10 +15,11 @@ class PupilTracker:
         self.model = pp.PuReST()
         if self.debug:
             self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe, pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
-        #TODO CHANGE FOR PI
-        # self.cam = cv2.VideoCapture(0)
         self.cam = picam.Camera()
-        self.ROI = [0, 0, -1, -1] #x, y, w, h
+        self.cam.flip_camera(vflip=True)
+        self.eye_finder = cv2.CascadeClassifier('data/haarcascades/haarcascade_eye.xml')
+        self.face_finder = cv2.CascadeClassifier('data/haarcascades/haarcascade_frontalface_default.xml')
+        self.ROI = [2000, 900, 1500, 900] #x, y, w, h
         self.roi_center = None
         self.pupilID = 1
         self.history = []
@@ -73,9 +37,6 @@ class PupilTracker:
     def init_graph(self, cv2Image, title):
         plt.ion()
         self.graph = plt.imshow(cv2Image)
-        self.cursor = Cursor(self.graph.axes)
-        self.graph.figure.canvas.mpl_connect('motion_notify_event', self.cursor.on_mouse_move)
-        self.graph.figure.canvas.mpl_connect('button_press_event', self.cursor.on_mouse_click)
         plt.title(f"Confidence: {title}")
         plt.show()
         # plt.pause(0.005)
@@ -86,6 +47,16 @@ class PupilTracker:
         plt.title(f"Confidence: {title}")
         plt.draw()
         plt.pause(0.005)
+    
+    def get_roi(self, cv2Image):
+        #todo detect face
+        eyes = self.eye_finder.detectMultiScale(cv2Image, 1.3, 5)
+        if len(eyes) == 0:
+            print("didn't find an eye")
+            return (0, 0, -1, -1)
+        maxEye = eyes[np.argmax(eyes, 0)].tolist()[0] 
+        x, y, w, h  = maxEye
+        return (x, y, w, h)
 
     def draw_pupil_and_show(self, cv2Image, pupil):
         if pupil==None:
@@ -106,16 +77,12 @@ class PupilTracker:
             self.update_graph(colourImg, confidence)
     
     def collect_image(self):
-        #if self.debug:
-        #    if self.cam.isOpened():
-        #        rval, img = self.cam.read()
-        #    else:
-        #        print("something went wrong with the image")
-        #else:
         img = self.cam.capture_array()
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         x, y, w, h = self.ROI
-        return img[x:x+w, y:y+h]
+        return np.flip(img[y:y+h, x:x+w], 0)
+        #return np.flip(img[x:x+w, y:y+h], 0)
+        #return img[x+w:x, y+h:y]
     
     def normalise_pupil(self, pupil):
         x, y = pupil.center
@@ -129,7 +96,7 @@ class PupilTracker:
     def track_pupil(self, cv2Image):
         #use model
         pupil = self.model.run(cv2Image)
-
+        return pupil
         #detect outliers
         pass
         return None
@@ -144,27 +111,23 @@ class PupilTracker:
             pupil = self.track_pupil(img)
             t2 = time.time()
             print(f"pupil identified in {t2 - t1} seconds")
-            #if pupil == None
-            #    print("Pupil invalid.")
-            #    continue
+            if pupil == None:
+                print("Pupil invalid.")
+                continue
             if self.debug or first_run:
                 self.draw_pupil_and_show(img, pupil)
                 t3  = time.time()
                 print(f"pupil drawn in {t3 - t2} seconds")
+            #basic set ROI
+            if self.ROI == [0, 0, -1, -1]:
+                self.ROI = self.get_roi(img)
+                print(f"ROI: {self.ROI}")
+                
             #set ROI
-            if self.cursor.roi_center != None and self.roi_center != self.cursor.roi_center:
-                global roi_size
-                w, h = roi_size
-                x = self.cursor.roi_center[0] - w//2
-                y = self.cursor.roi_center[1] - h//2
-                self.roi_center = self.cursor.roi_center
-                self.ROI = [x, y, w, h]
-            #TODO RE-ADD THIS
-            # x, y, d = self.normalise_pupil(pupil)
             t4 = time.time()
             print(f"pupil normalised in {t3 - t4} seconds")
             #send off
-            self.send_pupil(x, y, d)
+            #self.send_pupil(x, y, d)
             t5 = time.time()
             print(f"pupil sent in {t4 - t5} seconds")
             print(f"TOTAL TIME: {t5 - t0} seconds")
@@ -180,17 +143,7 @@ class PupilTracker:
                 continue
             if self.debug or first_run:
                 self.draw_pupil_and_show(img, pupil)
-            #set ROI
-            if self.cursor.roi_center != None and self.roi_center != self.cursor.roi_center:
-                global roi_size
-                w, h = roi_size
-                x = self.cursor.roi_center[0] - w//2
-                y = self.cursor.roi_center[1] - h//2
-                self.roi_center = self.cursor.roi_center
-                self.ROI = [x, y, w, h]
-            x, y, d = self.normalise_pupil(pupil)
-            #send off
-            self.send_pupil(x, y, d)
+            
 
 if __name__ == "__main__":
     tracker = PupilTracker(osc_ip, osc_port)
