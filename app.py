@@ -13,6 +13,7 @@ diam_max_px = 500
 diam_min_mm = 2.0
 diam_max_mm = 8.0
 center_tolerance_px = 200
+colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
 
 class PupilTracker:
     def __init__(self, osc_ip, osc_port):
@@ -88,7 +89,7 @@ class PupilTracker:
         
     def draw_all_pupils_and_show(self, cv2Image, pupils):
         colourImg = cv2.cvtColor(cv2Image, cv2.COLOR_GRAY2RGB)
-        colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
+        global colours
         confidences = []
         # pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()
         # ElSe:red, ExCuSe:green, PuRe:blue, PuReST:yellow, Starburst:magenta, Swirski2D:cyan, final:white
@@ -104,7 +105,9 @@ class PupilTracker:
             angle = pupil.angle
             confidences.append(str(int(100*pupil.confidence)))
             cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
-        cv2.imwrite(f"images/{time.time()}.jpg", colourImg)
+        #cv2.imwrite(f"images/{time.time()}.jpg", colourImg)
+        print(confidences)
+        confidences = ["no  ", "pupils"]
         if self.graph == None:
             self.init_graph(colourImg, ','.join(confidences))
         else:
@@ -136,13 +139,14 @@ class PupilTracker:
         return None
     
     def track_pupil_agreement(self, cv2Image):
-        global diam_min_px, diam_max_px, center_tolerance_px
+        global diam_min_px, diam_max_px, center_tolerance_px, colours
         pupils = [model.run(cv2Image) for model in self.models]
         discards = []
         # if pupil is outside appropriate size range, discard
         for i in range(len(pupils)-1, -1, -1):
             if pupils[i] == None:
                 pupils.pop(i)
+                colours[i] = (80, 80, 80)
             s = pupils[i].size
             #s = (pupils[i].majorAxis(), pupils[i].minorAxis())
             if s[0] < diam_min_px or  s[1] < diam_min_px or s[0] > diam_max_px or s[1] > diam_max_px:
@@ -167,6 +171,7 @@ class PupilTracker:
         while(True):
             t0 = time.time()
             img = self.collect_image()
+            cv2.imwrite(f"images/undrawn/{time.time()}.jpg", img)
             t1 = time.time()
             print(f"image collected in {t1  - t0} seconds")
             pupils = []
@@ -176,9 +181,9 @@ class PupilTracker:
             pupils.append(pupil)
             t2 = time.time()
             print(f"pupil identified in {t2 - t1} seconds")
-            if pupil == None:
-                print("Pupil invalid.")
-                continue
+            #if pupil == None:
+            #    print("Pupil invalid.")
+            #    continue
             if self.debug or first_run:
                 self.draw_all_pupils_and_show(img, pupils)
                 #self.draw_pupil_and_show(img, pupil)
