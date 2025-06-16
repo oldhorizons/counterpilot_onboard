@@ -11,4 +11,4 @@ To run this code:
 # THE REDO
 from within the counterpilot_onboard folder, run ../.pyenv/versions/3.10.16/bin/python app.py
 
-To setup, run setup.sh from within counterpilot_onboard folder
+To setup, run pi-onboard-setup.sh from within counterpilot_onboard folder
