@@ -13,7 +13,47 @@ diam_max_px = 500
 diam_min_mm = 2.0
 diam_max_mm = 8.0
 center_tolerance_px = 200
-colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
+selected_models = ['else', 'pure', 'purest']
+models = []
+colours = []
+cNames = []
+ref = {
+    'else': {
+        'colour': (255, 0, 0),
+        'cName': 'red',
+        'model': pp.ElSe()
+        },
+    'excuse': {
+        'colour': (0, 255, 0),
+        'cName': 'green',
+        'model': pp.ExCuSe()
+        },
+    'pure': {
+        'colour': (0, 0, 255),
+        'cName': 'blue',
+        'model': pp.PuRe()
+        },
+    'purest': {
+        'colour': (255,255, 0),
+        'cName': 'yellow',
+        'model': pp.PuReST()
+        },
+    'starburst': {
+        'colour': (255, 0, 255),
+        'cName': 'magenta',
+        'model': pp.Starburst()
+        },
+    'swirski': {
+        'colour': (0, 255, 255),
+        'cName': 'cyan',
+        'model': pp.Swirski2D()
+        }
+}
+
+for model in selected_models:
+    models.append(ref[model]['model'])
+    colours.append(ref[model]['colour'])
+    cNames.append(ref[model]['cName'])
 
 class PupilTracker:
     def __init__(self, osc_ip, osc_port):
@@ -21,7 +61,8 @@ class PupilTracker:
         self.debug = debug
         self.model = pp.PuReST()
         if self.debug:
-            self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
+            global models
+            self.models = models
         try:
             self.cam = picam.Camera()
         except IndexError as error:
@@ -90,11 +131,12 @@ class PupilTracker:
     def draw_all_pupils_and_show(self, cv2Image, pupils):
         colourImg = cv2.cvtColor(cv2Image, cv2.COLOR_GRAY2RGB)
         global colours
+        global cNames
         confidences = []
         # pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()
         # ElSe:red, ExCuSe:green, PuRe:blue, PuReST:yellow, Starburst:magenta, Swirski2D:cyan, final:white
         for i, pupil in enumerate(pupils):
-            if pupil==None:
+            if pupil==None or pupil.size[0] < 0.001:
                 confidences.append(0)
                 continue
             x, y = pupil.center
@@ -104,10 +146,16 @@ class PupilTracker:
             dMin = int(pupil.minorAxis())
             angle = pupil.angle
             confidences.append(str(int(100*pupil.confidence)))
-            cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
+            try:
+                if dMin == 0 or dMaj ==0:
+                    continue
+                cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
+            except e:
+                print(e)
+                continue
         #cv2.imwrite(f"images/{time.time()}.jpg", colourImg)
+        confidences = [str(i) for i in confidences]
         print(confidences)
-        confidences = ["no  ", "pupils"]
         if self.graph == None:
             self.init_graph(colourImg, ','.join(confidences))
         else:
@@ -209,13 +257,16 @@ class PupilTracker:
         while(True):
             img = self.collect_image()
             pupil = self.track_pupil(img)
+            #pupil = self.track_pupil_agreement(img)
             if pupil == None:
                 print("Pupil invalid.")
                 continue
             if self.debug or first_run:
                 self.draw_pupil_and_show(img, pupil)
+            x, y, d = self.normalise_pupil(pupil)
+            self.send_pupil(x, y, d)
             
 
 if __name__ == "__main__":
     tracker = PupilTracker(osc_ip, osc_port)
-    tracker.run_verbose()
+    tracker.run()
