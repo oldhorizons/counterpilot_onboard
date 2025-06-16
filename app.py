@@ -19,9 +19,9 @@ class PupilTracker:
     def __init__(self, osc_ip, osc_port):
         global debug
         self.debug = debug
+        self.find_face = True #if face first needs to be identified.
         self.model = pp.PuReST()
-        if self.debug:
-            self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
+        self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
         try:
             self.cam = picam.Camera()
         except IndexError as error:
@@ -60,14 +60,23 @@ class PupilTracker:
         plt.pause(0.005)
     
     def get_roi(self, cv2Image):
-        #todo detect face
+        if self.find_face:
+            faces = self.face_finder.detectMultiScale(cv2Image, 1.3, 5)
+            if len(faces) == 0:
+                xFace, yFace = 0,0
+            else:
+                xFace, yFace, wFace, hFace = faces[np.argmax(faces, 0)[2]].tolist() #get biggest detected face, measured by width
+                cv2Image = cv2Image[yFace:yFace+hFace, xFace:xFace+wFace]
         eyes = self.eye_finder.detectMultiScale(cv2Image, 1.3, 5)
         if len(eyes) == 0:
             print("didn't find an eye")
             return (0, 0, -1, -1)
         maxEye = eyes[np.argmax(eyes, 0)].tolist()[0] 
-        x, y, w, h  = maxEye
-        return (x, y, w, h)
+        xEye, yEye, wEye, hEye  = maxEye
+        if self.find_face:
+            xEye += xFace
+            yEye += yFace
+        return (xEye, yEye, wEye, hEye)
 
     def draw_pupil_and_show(self, cv2Image, pupil):
         if pupil==None:
@@ -213,6 +222,7 @@ class PupilTracker:
                 print("Pupil invalid.")
                 continue
             if self.debug or first_run:
+                first_run = False
                 self.draw_pupil_and_show(img, pupil)
             
 
