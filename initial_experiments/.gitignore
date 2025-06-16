@@ -1,0 +1,11 @@
+env/
+research/
+etc/
+data/
+app/EyeTracker/EyeTracker/bin*
+app/EyeTracker/EyeTracker/data
+app/EyeTracker/EyeTracker/obj
+app/EyeTracker/EyeTracker/Properties
+app/EyeTracker/EyeTracker/.vs
+app/opencv
+app/EyeTrackerPython
