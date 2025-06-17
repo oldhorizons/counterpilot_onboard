@@ -9,7 +9,7 @@ from cyndilib.audio_frame import AudioFrameSync
 from cyndilib.framesync import FrameSyncThread
 
 class NDICam:
-    def __init__(self, source_name):
+    def __init__(self, source_name, verbose=False):
         #adapted from https://github.com/nocarryr/cyndilib/blob/main/examples/viewer.py
         # Create and start a Finder with a callback
         self.source_name = source_name
@@ -17,6 +17,7 @@ class NDICam:
         self.finder.set_change_callback(self.on_finder_change)
         self.finder.open()
         self.ROI = None
+        self.verbose = False
 
         # Create a Receiver without a source
         self.receiver = Receiver(

@@ -2,8 +2,9 @@ import matplotlib.pyplot as plt
 import cv2
 
 class PupilVisualiser:
-    def __init__(self):
+    def __init__(self, verbose=False):
         self.graph = None
+        self.verbose = verbose
         
     def init_graph(self, cv2Image, title):
         plt.ion()

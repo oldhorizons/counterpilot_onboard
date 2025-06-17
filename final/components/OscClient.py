@@ -1,7 +1,7 @@
 from pythonosc import udp_client
 
 class OscClient:
-    def __init__(self, osc_ip, osc_port, verbose):
+    def __init__(self, osc_ip, osc_port, verbose=False):
         self.oscClient = udp_client.SimpleUDPClient(osc_ip, osc_port)
         print(f"Initialised OSC client to {osc_ip}:{osc_port}")
         self.verbose = verbose

@@ -23,5 +23,15 @@ pip install cyndilib
 curl https://github.com/openPupil/PyPupilEXT/releases/download/v0.0.1-beta/PyPupilEXT-0.0.1-cp310-cp310-macosx_14_0_universal2.whl
 pip install PyPupilEXT-0.0.1-cp310-cp310-macosx_14_0_universal2.whl
 
+brew install pkg-config
+brew install cmake
+brew install nasm
+brew install gcc
+brew install llvm
+brew install libomp
+brew install libmpc
+brew install tree
+brew install libxcb
+
 pip install ndi-python
 # pip install typing_extensions click

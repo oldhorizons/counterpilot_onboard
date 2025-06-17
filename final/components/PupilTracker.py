@@ -1,20 +1,18 @@
 import numpy as np
 import cv2
 import pypupilext as pp
-from matplotlib import pyplot as plt
-from matplotlib.backend_bases import MouseEvent
-from constants import hyperparams
-import time
+import appConstants
 
 colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
 
 class PupilTracker:
-    def __init__(self, verbose):
-        self.find_face = True #if face first needs to be identified.
+    def __init__(self, verbose=False):
         self.model = pp.PuReST()
         self.models = [pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()]
-        self.eye_finder = cv2.CascadeClassifier('data/haarcascades/haarcascade_eye.xml')
-        self.face_finder = cv2.CascadeClassifier('data/haarcascades/haarcascade_frontalface_default.xml')
+        self.eye_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_eye.xml')
+        self.face_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_frontalface_default.xml')
+        self.verbose = verbose
+        self.ROI = [0, 0, -1, -1]
 
     def detect_eye(self, cv2Image):
         faces = self.face_finder.detectMultiScale(cv2Image, 1.3, 5)
@@ -31,7 +29,8 @@ class PupilTracker:
         xEye, yEye, wEye, hEye  = maxEye
         xEye += xFace
         yEye += yFace
-        return (xEye, yEye, wEye, hEye)
+        self.ROI = [xEye, yEye, wEye, hEye]
+        return self.ROI
     
     def extract_pupil_attrs(self, pupil):
         x, y = pupil.center
