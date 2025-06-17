@@ -1,52 +1,54 @@
-import picamzero as picam
 import numpy as np
 import cv2
-import pypupilext as pp
 from matplotlib import pyplot as plt
 from matplotlib.backend_bases import MouseEvent
 from pythonosc import udp_client
-from constants import osc_ip, osc_port, debug, roi_size
+from constants import osc_ip, osc_port, verbose, ndi_stream_names, hyperparams
 import time
 from components.cameras import NDICam
-from components import PupilTracker, PupilVisualiser, OscCilent
+from components import PupilTracker, PupilVisualiser, OscClient
 
 class App:
-    def __init__(self, osc_ip, osc_port):
-        self.cam = CameraInterface()
+    def __init__(self):
+        global ndi_stream_names
+        global osc_ip
+        global osc_port
+        global hyperparams
+        self.cameras = []
+        self.networker = OscClient(osc_ip, osc_port)
+        for name in ndi_stream_names:
+            self.cameras.append(NDICam(name))
         self.tracker = PupilTracker()
-        self.visualiser = Visualiser()
+        self.visualiser = PupilVisualiser(len(ndi_stream_names))
         self.networker = OscClient()
-        self.verbose
+        self.verbose = verbose
+
+    def start_threaded(self):
+        #TODO THIS
+        pass
+
+    def first_run(self):
+        self.pupilHist = np.zeros(len(self.cameras), 1000, 3)
+        # get images from all cameras
+        for idx, cam in enumerate(self.cameras):
+            img = cam.capture()
+        # set all camera ROIs
+        #basic set ROI
+        if self.tracker.ROI == [0, 0, -1, -1]:
+            self.tracker.ROI = self.tracker.get_roi(img)
+            print(f"ROI: {self.tracker.ROI}")
+
 
     def run(self):
-        first_run = True
+        self.first_run()
         while(True):
-            t0 = time.time()
-            img = self.cam.capture()
-            if self.verbose:
-                cv2.imwrite(f"images/undrawn/{time.time()}.jpg", img)
-                t1 = time.time()
-                print(f"image collected in {t1  - t0} seconds")
-                t2 = time.time()
-                print(f"pupil identified in {t2 - t1} seconds")
-            pupils = self.tracker.track(img)
-            if self.verbose and (self.debug or first_run):
-                self.draw_all_pupils_and_show(img, pupils)
-                t3  = time.time()
-                print(f"pupil drawn in {t3 - t2} seconds")
-            #basic set ROI
-            if self.tracker.ROI == [0, 0, -1, -1]:
-                self.tracker.ROI = self.tracker.get_roi(img)
-                print(f"ROI: {self.tracker.ROI}")
-            #x, y, d = self.normalise_pupil(pupil)
-            t4 = time.time()
-            print(f"pupil normalised in {t3 - t4} seconds")
-            #send off
-            #self.send_pupil(x, y, d)
-            t5 = time.time()
-            print(f"pupil sent in {t4 - t5} seconds")
-            print(f"TOTAL TIME: {t5 - t0} seconds")
-            time.sleep(0.01)
+            for idx, cam in enumerate(self.cameras):
+                img = cam.capture()
+                pupil = self.tracker.detect_pupil_agreement(img)
+                if pupil != None:
+                    x, y, d = self.tracker.normalise_pupil(pupil)
+                    #send off
+                    self.networker.send_pupil(idx, x, y, d)
     
     def run(self):
         first_run = True
