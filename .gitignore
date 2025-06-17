@@ -22,3 +22,7 @@ initial_experiments/app/EyeTracker/EyeTracker/Properties
 initial_experiments/app/EyeTracker/EyeTracker/.vs
 initial_experiments/app/opencv
 initial_experiments/app/EyeTrackerPython
+
+final/env/
+*.whl
+*.python-version

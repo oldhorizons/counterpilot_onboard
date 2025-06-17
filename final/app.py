@@ -7,17 +7,15 @@ from matplotlib.backend_bases import MouseEvent
 from pythonosc import udp_client
 from constants import osc_ip, osc_port, debug, roi_size
 import time
-from components.camera import CameraInterface
-from components.tracker import PupilTracker
-from components.visualiser import Visualiser
-from components.network import OscClient
+from components.cameras import NDICam
+from components import PupilTracker, PupilVisualiser, OscCilent
 
 class App:
     def __init__(self, osc_ip, osc_port):
         self.cam = CameraInterface()
         self.tracker = PupilTracker()
         self.visualiser = Visualiser()
-        self.networker = OscClient(osc_ip, osc_port)
+        self.networker = OscClient()
         self.verbose
 
     def run(self):

@@ -1,0 +1,9 @@
+debug = True
+verbose = True
+roi_size = [900, 1500]
+ndi_source_name = 'CHELLE (NVIDIA GeForce RTX 4060 Ti 1)'
+ndi_stream_name = "NVIDIA GeForce RTX 4060 Ti 1"
+ndi_source2_name = 'CHELLE (NVIDIA GeForce RTX 4060 Ti 2)'
+ndi_stream2_name = 'NVIDIA GeForce RTX 4060 Ti 2'
+osc_ip = "10.0.0.123"
+osc_port = 5006
