@@ -45,11 +45,12 @@ class App:
         while(True):
             for idx, cam in enumerate(self.cameras):
                 img = cam.capture()
-                pupil = self.tracker.detect_pupil_agreement(img, None)
-                if pupil != None:
-                    x, y, d = self.tracker.normalise_pupil(pupil)
-                    #send off
-                    self.networker.send_pupil(idx, x, y, d)
+                if type(img) != type(None):
+                    pupil = self.tracker.detect_pupil_agreement(img, None)
+                    if pupil != None:
+                        x, y, d = self.tracker.normalise_pupil(pupil)
+                        #send off
+                        self.networker.send_pupil(idx, x, y, d)
             
 
 if __name__ == "__main__":

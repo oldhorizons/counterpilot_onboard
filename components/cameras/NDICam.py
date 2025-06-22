@@ -43,11 +43,17 @@ class NDICam:
         if min(vf.xres, vf.yres) == 0:
             # We haven't received an actual frame yet, do nothing
             return None
+        # Convert from buffered rgba to grayscale
+        colourDepth = 4
+        xRes = frame.shape[0]//(vf.yres*colourDepth)
+        newFrame = np.reshape(frame, (vf.yres, xRes, colourDepth))
+        grayscale = cv2.cvtColor(newFrame, cv2.COLOR_RGBA2GRAY)[:vf.yres, :vf.xres]
         if self.ROI == None:
-            return frame
+            self.ROI = [0, 0, vf.xres, vf.yres]
+            return grayscale
         else:
             x, y, w, h = self.ROI
-            return frame[x:x+w, y:y+h]
+            return grayscale[x:x+w, y:y+h]
 
     def set_ROI(self, ROI):
         # [x y w h]
