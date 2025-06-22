@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import pypupilext as pp
-import appConstants
+from appConstants import hyperparams
 
 colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
 
@@ -57,9 +57,10 @@ class PupilTracker:
         for i in range(len(pupils)-1, -1, -1):
             if pupils[i] == None or pupils[i].confidence < hyperparams["confidence_threshold"]:
                 pupils.pop(i)
-            s = pupils[i].size
-            if prev_d != None and (s[0] < diam_min_px or  s[1] < diam_min_px or s[0] > diam_max_px or s[1] > diam_max_px):
-                pupils.pop(i)
+            else:
+                s = pupils[i].size
+                if prev_d != None and (s[0] < diam_min_px or  s[1] < diam_min_px or s[0] > diam_max_px or s[1] > diam_max_px):
+                    pupils.pop(i)
         # calculate  centers of  new pupil collection
         median_center = np.median(np.array([pupil.center for pupil in pupils]))
         # remove all pupils with center outside range tolerance
