@@ -1,6 +1,0 @@
-@EyeTracker_HostAddress = http://localhost:8080
-
-GET {{EyeTracker_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
