@@ -3,6 +3,7 @@ import cv2
 import pypupilext as pp
 from appConstants import hyperparams
 import numpy as np
+import math
 
 class PupilTracker:
     def __init__(self, verbose=False):
@@ -60,8 +61,9 @@ class PupilTracker:
         # if pupil is outside appropriate size range, discard
         priorities = [0 for i in range(len(pupils))]
         if prev_d != None:
-            pass
-            # priorities = [p.confidence*(np.mean(p.size)) for p in pupils]
+            priorities = [p.confidence*
+                          (math.abs(p.majorAxis() - diam_max_px) + math.abs(p.minorAxis() - diam_min_px))
+                            for p in pupils]
         for i in range(len(pupils)-1, -1, -1):
             if pupils[i] == None or pupils[i].confidence < hyperparams["confidence_threshold"]:
                 #discard pupils that don't meet confidence threshold
