@@ -1,6 +1,6 @@
 verbose = True
 roi_size = [900, 1500]
-ndi_stream_names = ['CHELLE (NVIDIA GeForce RTX 4060 Ti 1)']
+ndi_stream_names = [None] #['CHELLE (NVIDIA GeForce RTX 4060 Ti 1)']
 osc_ip = "10.0.0.123"
 osc_port = 5006
 hyperparams = {

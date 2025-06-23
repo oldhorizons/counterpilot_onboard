@@ -43,6 +43,8 @@ class App:
         # self.first_run()
         global verbose
         while(True):
+            ppls = []
+            imgs = []
             for idx, cam in enumerate(self.cameras):
                 img = cam.capture()
                 if type(img) != type(None):
@@ -59,7 +61,11 @@ class App:
                         x, y, w, h = self.cam_rois[idx]
                         cropped = img[x:x+w, y:y+h]
                         pupils = self.tracker.get_all_pupils(cropped)
-                    self.visualiser.draw_all_pupils_and_show(cropped, pupils)
+                    imgs.append(cropped)
+                    ppls.append(pupils)
+            if len(imgs) != 0:
+                self.visualiser.draw_all_pupils_single(imgs[0], ppls[0])
+                # self.visualiser.draw_all_pupils_multicam(imgs, ppls)
 
 if __name__ == "__main__":
     app = App()

@@ -32,7 +32,7 @@ class NDICam:
         self.receiver.frame_sync.set_audio_frame(self.audio_frame)
         self.ndi_source_names = self.finder.get_source_names()
         if self.source_name is None:
-            self.get_first_source()
+           self.get_first_source()
         self.update_source()
         self.receiver.set_source(self.source)
     

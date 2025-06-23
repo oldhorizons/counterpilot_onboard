@@ -11,7 +11,8 @@ class PupilTracker:
         self.eye_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_eye.xml')
         self.face_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_frontalface_default.xml')
         self.verbose = verbose
-        self.selectROI = []
+        self.rois = dict()
+        self.pupilHistory = dict()
 
     def get_eye_roi(self, cv2Image):
         faces = self.face_finder.detectMultiScale(cv2Image, 1.3, 5)
@@ -38,41 +39,47 @@ class PupilTracker:
         d = int(d)
         return x, y, d
     
-    def detect_pupil(self, cv2Image, model):
+    def detect_pupil(self, cv2Image, model=None, pupilId = None,):
         if model == None:
             model = self.model
         pupil = model.run(cv2Image)
         return pupil
     
-    def detect_pupil_agreement(self, cv2Image, prev_d):
+    def detect_pupil_agreement(self, cv2Image, pupilId = None):
         global hyperparams, colours
-        if prev_d != None:
+        if pupilId not in self.pupilHistory.keys():
+            self.pupilHistory[pupilId] = []
+            prev_d = None
+        else:
+            prev_d = self.pupilHistory[pupilId].majorAxis()
             diam_min_px = prev_d + hyperparams["deltaD_tolerance"]*prev_d
             diam_max_px = prev_d - hyperparams["deltaD_tolerance"]*prev_d
 
+
         pupils = [model.run(cv2Image) for model in self.models]
         # if pupil is outside appropriate size range, discard
+        priorities = [0 for i in range(len(pupils))]
+        if prev_d != None:
+            pass
+            # priorities = [p.confidence*(np.mean(p.size)) for p in pupils]
         for i in range(len(pupils)-1, -1, -1):
             if pupils[i] == None or pupils[i].confidence < hyperparams["confidence_threshold"]:
-                pupils.pop(i)
+                #discard pupils that don't meet confidence threshold
+                priorities[i] -= 2
             else:
                 s = pupils[i].size
                 if prev_d != None and (s[0] < diam_min_px or  s[1] < diam_min_px or s[0] > diam_max_px or s[1] > diam_max_px):
-                    pupils.pop(i)
+                    priorities[i] -= 1
         # calculate  centers of  new pupil collection
         median_center = np.median(np.array([pupil.center for pupil in pupils]))
         # remove all pupils with center outside range tolerance
         for i in range(len(pupils)-1, -1, -1):
             d = np.linalg.norm(median_center - pupils[i].center)
             if d > hyperparams["centerDiff_tolerance"]*cv2Image.shape[0]:
-                pupils.pop(i)
-        # return pupil with smallest ellipse within tolerances
-        if len(pupils) == 0:
-            return None
-        return min(pupils, key=lambda pupil:max(pupil.size))
-        
-        # pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()
-        # ElSe:red, ExCuSe:green, PuRe:blue, PuReST:yellow, Starburst:magenta, Swirski2D:cyan, final:white
+                priorities[i] -= 0.5
+        # give priority to pupil with smallest ellipse within tolerances
+        priorities[pupils.index(min(pupils, key=lambda pupil:max(pupil.size)))] += 2
+        return pupils[priorities.index(max(priorities))]
     
     def get_all_pupils(self, cv2Image):
         return [model.run(cv2Image) for model in self.models]
