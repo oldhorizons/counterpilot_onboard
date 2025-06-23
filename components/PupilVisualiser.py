@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
 import cv2
+from matplotlib.widgets import RectangleSelector
+
+colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
 
 class PupilVisualiser:
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, nCams=1):
         self.graph = None
         self.verbose = verbose
+        self.nCams = nCams
         
     def init_graph(self, cv2Image, title):
         plt.ion()
@@ -13,7 +17,7 @@ class PupilVisualiser:
         plt.show()
         # plt.pause(0.005)
     
-    def update(self, cv2Image, title):
+    def update_graph(self, cv2Image, title):
         self.graph.remove()
         self.graph = plt.imshow(cv2Image)
         plt.title(f"Confidence: {title}")
@@ -22,7 +26,7 @@ class PupilVisualiser:
 
     def draw_pupil_and_show(self, cv2Image, pupil):
         if pupil==None:
-            x, y, dMaj, dMin, angle, confidence = 10, 10, 50, 20, 80, 0.5
+            return
         else:
             x, y = pupil.center
             x = int(x)
@@ -55,7 +59,10 @@ class PupilVisualiser:
             dMin = int(pupil.minorAxis())
             angle = pupil.angle
             confidences.append(str(int(100*pupil.confidence)))
-            cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
+            try:
+                cv2.ellipse(colourImg, (x, y), (dMin//2, dMaj//2), angle, 0, 360, colours[i], 2)
+            except:
+                continue
         #cv2.imwrite(f"images/{time.time()}.jpg", colourImg)
         print(confidences)
         confidences = ["no  ", "pupils"]
@@ -63,5 +70,33 @@ class PupilVisualiser:
             self.init_graph(colourImg, ','.join(confidences))
         else:
             self.update_graph(colourImg, ','.join(confidences))
+
+    def init_graph_multicam(self, cv2Image, title, index):
+        pass
+
+    def update_graph_multicam(self, cv2Image, title, index):
+        pass
+
     
     
+    def get_eye_roi_manual(self, cv2Image):
+        fig = plt.figure(layout='constrained')
+        ax = fig.subplots()
+        ax.set_title("Click and drag to select ROI")
+        s = RectangleSelector(ax, onselect=self.select_callback)
+        ax.imshow(cv2Image)
+        input("Confirm ROI?")
+        roi = self.selectROI
+        self.selectROI = []
+        return roi
+        
+    def select_callback(self, eclick, erelease):
+        #https://matplotlib.org/stable/gallery/widgets/rectangle_selector.html
+        x1, y1 = eclick.xdata, eclick.ydata
+        x2, y2 = erelease.xdata, erelease.ydata
+        print(f"{x1} {x2} {y1} {y2}")
+        x = min(x1, x2)
+        w = max(x1, x2) - x
+        y = min(y1, y2)
+        h = max(y1, y2) - y
+        self.selectROI = [x, y, w, h]

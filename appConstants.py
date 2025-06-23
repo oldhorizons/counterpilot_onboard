@@ -6,6 +6,6 @@ osc_port = 5006
 hyperparams = {
     "historyLength": 1000, #number of pupils to track in history
     "deltaD_tolerance": 0.01, #percent pupil diameter change allowable between captures
-    "centerDiff_tolerance": 0.3, #percent pupil position cdifference between models
-    "confidence_threshold": 0.6,
+    "centerDiff_tolerance": 0.3, #percent pupil position difference between models. Relative to image size.
+    "confidence_threshold": 0.1,
 }

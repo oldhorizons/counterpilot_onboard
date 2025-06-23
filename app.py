@@ -17,6 +17,7 @@ class App:
         global osc_port
         global hyperparams
         self.cameras = []
+        self.cam_rois = [None for i in range(len(ndi_stream_names))]
         self.networker = OscClient(osc_ip, osc_port)
         for name in ndi_stream_names:
             self.cameras.append(NDICam(name))
@@ -33,25 +34,32 @@ class App:
         # get images from all cameras
         for idx, cam in enumerate(self.cameras):
             img = cam.capture()
-        # set all camera ROIs
-        #basic set ROI
-        if self.tracker.ROI == [0, 0, -1, -1]:
-            self.tracker.ROI = self.tracker.get_roi(img)
-            print(f"ROI: {self.tracker.ROI}")
-
+            while type(img) == type(None):
+                img = cam.capture()
+            # self.cam_rois[idx] = self.tracker.get_eye_roi(img) #bit buggy - only sometimes works. Need to test on irl data
+            self.cam_rois[idx] = self.tracker.get_eye_roi(img)
 
     def run(self):
-        #self.first_run()
+        # self.first_run()
+        global verbose
         while(True):
             for idx, cam in enumerate(self.cameras):
                 img = cam.capture()
                 if type(img) != type(None):
-                    pupil = self.tracker.detect_pupil_agreement(img, None)
-                    if pupil != None:
-                        x, y, d = self.tracker.normalise_pupil(pupil)
-                        #send off
-                        self.networker.send_pupil(idx, x, y, d)
-            
+                    if self.cam_rois[idx] != None:
+                        x, y, w, h = self.cam_rois[idx]
+                        cropped = img[x:x+w, y:y+h]
+                    else:
+                        cropped = img
+                    pupils = self.tracker.get_all_pupils(cropped)
+                    confidences = [pupil.confidence for pupil in pupils]
+                    if np.mean(confidences) == -100:
+                        #we've probably lost the eye. re-find it.
+                        self.cam_rois[idx] = self.tracker.get_eye_roi(img)
+                        x, y, w, h = self.cam_rois[idx]
+                        cropped = img[x:x+w, y:y+h]
+                        pupils = self.tracker.get_all_pupils(cropped)
+                    self.visualiser.draw_all_pupils_and_show(cropped, pupils)
 
 if __name__ == "__main__":
     app = App()

@@ -2,8 +2,7 @@ import numpy as np
 import cv2
 import pypupilext as pp
 from appConstants import hyperparams
-
-colours = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255), (255,255,255)]
+import numpy as np
 
 class PupilTracker:
     def __init__(self, verbose=False):
@@ -12,9 +11,9 @@ class PupilTracker:
         self.eye_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_eye.xml')
         self.face_finder = cv2.CascadeClassifier('modeldata/haarcascades/haarcascade_frontalface_default.xml')
         self.verbose = verbose
-        self.ROI = [0, 0, -1, -1]
+        self.selectROI = []
 
-    def detect_eye(self, cv2Image):
+    def get_eye_roi(self, cv2Image):
         faces = self.face_finder.detectMultiScale(cv2Image, 1.3, 5)
         if len(faces) == 0:
             xFace, yFace = 0,0
@@ -29,8 +28,7 @@ class PupilTracker:
         xEye, yEye, wEye, hEye  = maxEye
         xEye += xFace
         yEye += yFace
-        self.ROI = [xEye, yEye, wEye, hEye]
-        return self.ROI
+        return [xEye, yEye, wEye, hEye]
     
     def extract_pupil_attrs(self, pupil):
         x, y = pupil.center
@@ -66,7 +64,7 @@ class PupilTracker:
         # remove all pupils with center outside range tolerance
         for i in range(len(pupils)-1, -1, -1):
             d = np.linalg.norm(median_center - pupils[i].center)
-            if d > hyperparams["centerDiff_tolerance"]:
+            if d > hyperparams["centerDiff_tolerance"]*cv2Image.shape[0]:
                 pupils.pop(i)
         # return pupil with smallest ellipse within tolerances
         if len(pupils) == 0:
@@ -76,6 +74,9 @@ class PupilTracker:
         # pp.ElSe(), pp.ExCuSe(), pp.PuRe(), pp.PuReST(), pp.Starburst(), pp.Swirski2D()
         # ElSe:red, ExCuSe:green, PuRe:blue, PuReST:yellow, Starburst:magenta, Swirski2D:cyan, final:white
     
+    def get_all_pupils(self, cv2Image):
+        return [model.run(cv2Image) for model in self.models]
+
     def track(self, img):
         pupils = []
         for model in self.models:
@@ -83,3 +84,4 @@ class PupilTracker:
         pupil = self.track_pupil_agreement(img)
         pupils.append(pupil)
         return pupils
+    
